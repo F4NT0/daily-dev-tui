@@ -1,0 +1,14 @@
+# Binaries
+*.exe
+dist/
+daily-dev-installer/payload/*.exe
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Secrets / IDE
+.env
+.vscode/
+.idea/
