@@ -2,7 +2,19 @@
   <img src="docs/login-screen.png" alt="daily-dev login screen" width="720">
 </p>
 
-# daily-dev
+---
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Go-1.26-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go">
+  <img src="https://img.shields.io/badge/Bubble%20Tea-TUI-A855F7?style=for-the-badge&logo=charm&logoColor=white" alt="Bubble Tea">
+  <img src="https://img.shields.io/badge/Lip%20Gloss-Styling-FF5FAF?style=for-the-badge&logo=charm&logoColor=white" alt="Lip Gloss">
+  <img src="https://img.shields.io/badge/Bubbles-Components-8B5CF6?style=for-the-badge&logo=charm&logoColor=white" alt="Bubbles">
+  <img src="https://img.shields.io/badge/Daily.dev-API-CE3DF3?style=for-the-badge&logo=dailydotdev&logoColor=white" alt="Daily.dev API">
+  <img src="https://img.shields.io/badge/PowerShell-Installer-5391FE?style=for-the-badge&logo=powershell&logoColor=white" alt="PowerShell">
+  <img src="https://img.shields.io/badge/Windows-supported-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
+</p>
+
+---
 
 A terminal toolkit for the [Daily.dev](https://app.daily.dev) public API, written in Go with [Bubble Tea](https://github.com/charmbracelet/bubbletea).
 
