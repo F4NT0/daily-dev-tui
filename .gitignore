@@ -1,7 +1,6 @@
 # Binaries
 *.exe
 dist/
-daily-dev-installer/payload/*.exe
 
 # Python
 __pycache__/

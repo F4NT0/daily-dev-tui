@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/login-screen.png" alt="daily-dev login screen" width="720">
+</p>
+
 # daily-dev
 
 A terminal toolkit for the [Daily.dev](https://app.daily.dev) public API, written in Go with [Bubble Tea](https://github.com/charmbracelet/bubbletea).
@@ -12,7 +16,7 @@ A terminal toolkit for the [Daily.dev](https://app.daily.dev) public API, writte
 | `daily-dev-tui/endpoints.go` | The list of supported API requests, with their path/query parameters. |
 | `daily-dev-tui/render.go` | Styles and rendering of API responses (posts, tags, sources, ...). |
 | `daily-dev-tui/splash.go` | The purple ASCII "DAILY.DEV API" login screen. |
-| `daily-dev-installer/` | Windows installer. Embeds the TUI binary, installs it and registers the `daily-dev` command. |
+| `daily-dev-installer/` | Windows installer. Fetches or builds the TUI binary, installs it and registers the `daily-dev` command. |
 | `daily-dev-installer/help.go` | The colored, tabbed `daily-dev --help` documentation. |
 | `daily-dev-installer/install.go` | Install steps: copy files, add the install directory to the user `PATH`. |
 | `daily_dev_search.py`, `requirements.txt` | Standalone Python search script. |
@@ -31,32 +35,36 @@ A terminal toolkit for the [Daily.dev](https://app.daily.dev) public API, writte
 
 Keep the token secret and revoke it if it leaks.
 
-## Build
-
-Binaries are not committed; build them locally.
-
-```powershell
-# 1. Build the TUI
-cd daily-dev-tui
-go build -o dailydev-tui.exe .
-
-# 2. Copy it into the installer payload and build the installer
-copy dailydev-tui.exe ..\daily-dev-installer\payload\daily-dev-tui.exe
-cd ..\daily-dev-installer
-go build -o dist\daily-dev-setup.exe .
-```
-
-The installer embeds `payload/daily-dev-tui.exe`, so step 2 must be done before building it.
-
 ## Install
 
-Run `daily-dev-setup.exe` and confirm. It will:
+Build the installer once (the TUI is **not** embedded; it is fetched or built during installation):
+
+```powershell
+cd daily-dev-installer
+go build -o dist\daily-dev-setup.exe .
+.\dist\daily-dev-setup.exe
+```
+
+The installer first asks where `daily-dev-tui` should come from:
+
+1. **Download the latest release** from GitHub (`releases/latest/download/daily-dev-tui.exe`). Requires a published release containing that asset.
+2. **Build from a local clone** with `go build` (requires Go). The `daily-dev-tui` folder is auto-detected next to the installer; otherwise you are asked for its path.
+
+Then it will:
 
 1. Create `%LOCALAPPDATA%\Programs\daily-dev`.
 2. Install `daily-dev-tui.exe` and the `daily-dev` launcher there.
 3. Add that directory to your user `PATH`.
 
 Open a new terminal afterwards.
+
+## Publishing a release
+
+Build `daily-dev-tui.exe` and `daily-dev-setup.exe` and attach both to a GitHub release. A one-line remote install is then:
+
+```powershell
+irm https://github.com/F4NT0/daily-dev-tui/releases/latest/download/daily-dev-setup.exe -OutFile $env:TEMP\daily-dev-setup.exe; & $env:TEMP\daily-dev-setup.exe
+```
 
 ## Usage
 

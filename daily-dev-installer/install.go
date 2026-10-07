@@ -1,17 +1,40 @@
 package main
 
 import (
-	"embed"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-//go:embed payload/daily-dev-tui.exe
-var payload embed.FS
+const releaseURL = "https://github.com/F4NT0/daily-dev-tui/releases/latest/download/daily-dev-tui.exe"
+
+var (
+	localInstall bool
+	localRepo    string
+)
+
+// findLocalRepo looks for the daily-dev-tui source next to the installer or the working directory.
+func findLocalRepo() string {
+	self, _ := os.Executable()
+	wd, _ := os.Getwd()
+	for _, base := range []string{wd, filepath.Dir(self), filepath.Dir(wd), filepath.Dir(filepath.Dir(self))} {
+		for _, c := range []string{base, filepath.Join(base, "daily-dev-tui")} {
+			if validRepo(c) {
+				return c
+			}
+		}
+	}
+	return ""
+}
+
+func validRepo(dir string) bool {
+	b, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	return err == nil && strings.Contains(string(b), "module dailydevtui")
+}
 
 func installDir() string {
 	return filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", "daily-dev")
@@ -25,11 +48,27 @@ func psEnv(script string) (string, error) {
 func stepCreateDir() error { return os.MkdirAll(installDir(), 0o755) }
 
 func stepCopyTUI() error {
-	b, err := payload.ReadFile("payload/daily-dev-tui.exe")
+	dst := filepath.Join(installDir(), tuiExe)
+	if localInstall {
+		out, err := buildLocal(dst)
+		if err != nil {
+			return fmt.Errorf("go build failed: %v: %s", err, strings.TrimSpace(string(out)))
+		}
+		return nil
+	}
+	resp, err := http.Get(releaseURL)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(installDir(), tuiExe), b, 0o755)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download failed: %s (is there a release with daily-dev-tui.exe?)", resp.Status)
+	}
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, b, 0o755)
 }
 
 func stepCopyLauncher() error {
@@ -70,4 +109,10 @@ func stepRemoveFiles() error {
 		return nil
 	}
 	return exec.Command("cmd", "/C", fmt.Sprintf(`start "" /B cmd /C "ping -n 3 127.0.0.1 >nul & rmdir /S /Q "%s""`, d)).Start()
+}
+
+func buildLocal(dst string) ([]byte, error) {
+	cmd := exec.Command("go", "build", "-o", dst, ".")
+	cmd.Dir = localRepo
+	return cmd.CombinedOutput()
 }

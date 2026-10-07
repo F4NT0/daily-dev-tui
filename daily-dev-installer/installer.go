@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -40,13 +42,23 @@ type instModel struct {
 	confirmed bool
 	uninstall bool
 	sp        spinner.Model
+	stage     int // 0 choose source, 1 ask repo path, 2 confirm/run
+	choice    int
+	input     textinput.Model
+	msg       string
 }
 
 func runInstaller(uninstall bool) {
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 	sp.Style = lipgloss.NewStyle().Foreground(accent)
-	m := instModel{sp: sp, uninstall: uninstall}
+	ti := textinput.New()
+	ti.Placeholder = "path to daily-dev-tui folder"
+	ti.Width = 60
+	m := instModel{sp: sp, uninstall: uninstall, input: ti, stage: 2}
+	if !uninstall {
+		m.stage = 0
+	}
 	if uninstall {
 		m.steps = []step{{"Remove daily-dev from your PATH", stepRemovePath}, {"Remove installed files", stepRemoveFiles}}
 	} else {
@@ -73,6 +85,45 @@ func (m instModel) run() tea.Cmd {
 func (m instModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.stage == 1 {
+			switch msg.String() {
+			case "ctrl+c", "esc":
+				return m, tea.Quit
+			case "enter":
+				p := strings.Trim(strings.TrimSpace(m.input.Value()), `"`)
+				if !validRepo(p) {
+					m.msg = "Not a daily-dev-tui repository (go.mod with module dailydevtui not found)."
+					return m, nil
+				}
+				localRepo, m.stage, m.msg = p, 2, ""
+				return m, nil
+			}
+			var c tea.Cmd
+			m.input, c = m.input.Update(msg)
+			return m, c
+		}
+		if m.stage == 0 {
+			switch msg.String() {
+			case "ctrl+c", "q", "esc":
+				return m, tea.Quit
+			case "up", "k", "down", "j":
+				m.choice = 1 - m.choice
+			case "enter":
+				localInstall = m.choice == 1
+				if !localInstall {
+					m.stage = 2
+					return m, nil
+				}
+				if localRepo = findLocalRepo(); localRepo != "" {
+					m.stage = 2
+					return m, nil
+				}
+				m.stage = 1
+				m.input.Focus()
+				return m, textinput.Blink
+			}
+			return m, nil
+		}
 		switch msg.String() {
 		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
