@@ -1,0 +1,25 @@
+name: "API - Search - Search tags"
+
+on:
+  workflow_dispatch:
+    inputs:
+      daily_dev_token:
+        description: "Daily.dev token (optional, overrides the DAILY_DEV_TOKEN secret)"
+        required: false
+        type: string
+      q:
+        description: "search term"
+        required: true
+        type: string
+
+jobs:
+  request:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: GET /search/tags
+        run: bash .github/scripts/request.sh
+        env:
+          ENDPOINT_PATH: "/search/tags"
+          INPUTS: ${{ toJSON(inputs) }}
+          DAILY_DEV_TOKEN: ${{ inputs.daily_dev_token || secrets.DAILY_DEV_TOKEN }}

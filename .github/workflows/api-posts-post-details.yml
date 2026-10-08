@@ -1,0 +1,25 @@
+name: "API - Posts - Post details"
+
+on:
+  workflow_dispatch:
+    inputs:
+      daily_dev_token:
+        description: "Daily.dev token (optional, overrides the DAILY_DEV_TOKEN secret)"
+        required: false
+        type: string
+      id:
+        description: "post id"
+        required: true
+        type: string
+
+jobs:
+  request:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: GET /posts/{id}
+        run: bash .github/scripts/request.sh
+        env:
+          ENDPOINT_PATH: "/posts/{id}"
+          INPUTS: ${{ toJSON(inputs) }}
+          DAILY_DEV_TOKEN: ${{ inputs.daily_dev_token || secrets.DAILY_DEV_TOKEN }}

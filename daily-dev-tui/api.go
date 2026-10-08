@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const baseURL = "https://api.daily.dev/public/v1"
+var baseURL = "https://api.daily.dev/public/v1"
 
 func newClient() *http.Client {
 	c := &http.Client{Timeout: 30 * time.Second}
@@ -60,4 +60,21 @@ func doGet(c *http.Client, token string, e Endpoint, vals map[string]string) (an
 		return nil, err
 	}
 	return out, nil
+}
+
+func doSend(c *http.Client, token, method, path string, body any) error {
+	b, _ := json.Marshal(body)
+	req, _ := http.NewRequest(method, baseURL+path, strings.NewReader(string(b)))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		rb, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(rb)))
+	}
+	return nil
 }

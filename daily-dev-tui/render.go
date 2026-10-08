@@ -74,7 +74,7 @@ func scalar(v any) string {
 	return fmt.Sprint(v)
 }
 
-func renderItem(m map[string]any, w int) string {
+func renderItem(m map[string]any, w int, selected, bookmarked bool) string {
 	f := flatten(m)
 	used := map[string]bool{}
 	first := func(keys []string) (string, string) {
@@ -166,13 +166,20 @@ func renderItem(m map[string]any, w int) string {
 	if len(rest) > 0 {
 		b = append(b, wrap.Render(metaSt.Render(strings.Join(rest, "\n"))))
 	}
-	return cardSt.Width(w - 2).Render(strings.Join(b, "\n"))
+	st := cardSt
+	if bookmarked {
+		st = st.BorderForeground(lipgloss.Color("208"))
+	}
+	if selected {
+		st = st.Border(lipgloss.DoubleBorder())
+		if !bookmarked {
+			st = st.BorderForeground(lipgloss.Color("135"))
+		}
+	}
+	return st.Width(w - 2).Render(strings.Join(b, "\n"))
 }
 
-func renderResult(res any, w int) string {
-	if w < 20 {
-		w = 20
-	}
+func extractItems(res any) ([]any, []string) {
 	var items []any
 	var extra []string
 	switch t := res.(type) {
@@ -195,22 +202,111 @@ func renderResult(res any, w int) string {
 		} else {
 			items = []any{t}
 		}
-	default:
-		return scalar(res)
 	}
-	if len(items) == 0 {
-		return metaSt.Render("No results.")
+	return items, extra
+}
+
+func isPost(it any) bool {
+	m, ok := it.(map[string]any)
+	if !ok {
+		return false
 	}
-	out := []string{subSt.Render(fmt.Sprintf("%d result(s)", len(items)))}
+	_, hasID := m["id"].(string)
+	_, hasLink := m["commentsPermalink"].(string)
+	return hasID && hasLink
+}
+
+func selectablePosts(res any) []map[string]any {
+	items, _ := extractItems(res)
+	var out []map[string]any
 	for _, it := range items {
-		if m, ok := it.(map[string]any); ok {
-			out = append(out, renderItem(m, w))
-		} else {
-			out = append(out, cardSt.Width(w-2).Render(scalar(it)))
+		if isPost(it) {
+			out = append(out, it.(map[string]any))
 		}
 	}
+	return out
+}
+
+// renderResult returns the content and, per item, its [startLine, height].
+func renderResult(res any, w, sel int, selectable bool, bm map[string]bool) (string, [][2]int) {
+	if w < 20 {
+		w = 20
+	}
+	if _, ok := res.(map[string]any); !ok {
+		if _, ok := res.([]any); !ok {
+			return scalar(res), nil
+		}
+	}
+	items, extra := extractItems(res)
+	if len(items) == 0 {
+		return metaSt.Render("No results."), nil
+	}
+	line := 0
+	var offs [][2]int
+	var out []string
+	add := func(s string) {
+		out = append(out, s)
+		line += strings.Count(s, "\n") + 1
+	}
+	add(subSt.Render(fmt.Sprintf("%d result(s)", len(items))))
+	for i, it := range items {
+		start := line
+		if m, ok := it.(map[string]any); ok {
+			id, _ := m["id"].(string)
+			b, _ := m["bookmarked"].(bool)
+			add(renderItem(m, w, selectable && i == sel, b || bm[id]))
+		} else {
+			add(cardSt.Width(w - 2).Render(scalar(it)))
+		}
+		offs = append(offs, [2]int{start, line - start})
+	}
 	if len(extra) > 0 {
-		out = append(out, metaSt.Render("pagination: "+strings.Join(extra, "  ")))
+		add(metaSt.Render("pagination: " + strings.Join(extra, "  ")))
+	}
+	return strings.Join(out, "\n"), offs
+}
+
+func renderComments(res any, w int) string {
+	items, _ := extractItems(res)
+	if len(items) == 0 {
+		return metaSt.Render("No comments yet.")
+	}
+	var out []string
+	for _, it := range items {
+		m, ok := it.(map[string]any)
+		if !ok {
+			continue
+		}
+		f := flatten(m)
+		who := ""
+		for _, k := range []string{"author.username", "author.name", "user.username", "user.name"} {
+			if s, ok := f[k].(string); ok && s != "" {
+				who = s
+				break
+			}
+		}
+		body := ""
+		for _, k := range []string{"content", "message", "contentHtml"} {
+			if s, ok := f[k].(string); ok && s != "" {
+				body = s
+				break
+			}
+		}
+		if body == "" {
+			out = append(out, renderItem(m, w, false, false))
+			continue
+		}
+		head := titleSt.Render("@" + who)
+		if who == "" {
+			head = titleSt.Render("(anonymous)")
+		}
+		if d, ok := f["createdAt"].(string); ok {
+			head += "  " + metaSt.Render(d)
+		}
+		if v, ok := f["numUpvotes"]; ok {
+			head += "  " + metaSt.Render("upvotes "+scalar(v))
+		}
+		out = append(out, cardSt.Width(w-2).Render(head+"\n"+lipgloss.NewStyle().Width(w-6).Render(body)))
 	}
 	return strings.Join(out, "\n")
 }

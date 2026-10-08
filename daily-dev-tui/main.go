@@ -20,6 +20,7 @@ const (
 	stMenu
 	stForm
 	stLoading
+	stComments
 )
 
 type resultMsg struct {
@@ -27,7 +28,27 @@ type resultMsg struct {
 	err error
 }
 
+type actionMsg struct {
+	text string
+	err  error
+	id   string
+}
+
+type commentsMsg struct {
+	res any
+	err error
+}
+
 type model struct {
+	res        any
+	items      []map[string]any
+	sel        int
+	selectable bool
+	offs       [][2]int
+	cvp        viewport.Model
+	cLoading   bool
+	bm         map[string]bool
+
 	st         state
 	token      string
 	client     *http.Client
@@ -53,6 +74,8 @@ func initialModel() model {
 	ti.EchoMode = textinput.EchoPassword
 	ti.Focus()
 	m := model{client: newClient(), input: ti, sp: spinner.New(spinner.WithSpinner(spinner.Dot)), vp: viewport.New(10, 10)}
+	m.bm = map[string]bool{}
+	m.cvp = viewport.New(10, 10)
 	m.vp.SetContent(metaSt.Render("Select a request on the left and press Enter."))
 	if t := strings.TrimSpace(os.Getenv("DAILY_DEV_TOKEN")); t != "" {
 		m.token, m.st = t, stMenu
@@ -72,6 +95,62 @@ func (m model) fetch(e Endpoint, vals map[string]string) tea.Cmd {
 func (m *model) layout() {
 	m.vp.Width = m.w - leftW - 6
 	m.vp.Height = m.h - 3
+	m.cvp.Width = m.modalW() - 4
+	m.cvp.Height = m.h - 10
+}
+
+func (m model) modalW() int {
+	w := m.w - 12
+	if w > 100 {
+		w = 100
+	}
+	if w < 30 {
+		w = 30
+	}
+	return w
+}
+
+func (m *model) rerender() {
+	m.vp.SetContent(m.renderRes())
+}
+
+func (m *model) renderRes() string {
+	s, offs := renderResult(m.res, m.vp.Width, m.sel, m.selectable, m.bm)
+	m.offs = offs
+	return s
+}
+
+func (m *model) ensureVisible() {
+	if !m.selectable || m.sel >= len(m.offs) {
+		return
+	}
+	st, h := m.offs[m.sel][0], m.offs[m.sel][1]
+	if st < m.vp.YOffset || h >= m.vp.Height {
+		m.vp.SetYOffset(st)
+	} else if st+h > m.vp.YOffset+m.vp.Height {
+		m.vp.SetYOffset(st + h - m.vp.Height)
+	}
+}
+
+func (m model) selPost() map[string]any {
+	if !m.selectable || m.sel >= len(m.items) {
+		return nil
+	}
+	return m.items[m.sel]
+}
+
+func (m model) fetchComments(id string) tea.Cmd {
+	return func() tea.Msg {
+		r, err := doGet(m.client, m.token, endpoints[6], map[string]string{"id": id, "sort": "newest", "limit": "50"})
+		return commentsMsg{r, err}
+	}
+}
+
+func (m model) bookmark(id string) tea.Cmd {
+	return func() tea.Msg {
+		err := doSend(m.client, m.token, "POST", "/bookmarks/", map[string]any{"postIds": []string{id}})
+		return actionMsg{"bookmarked", err, id}
+	}
 }
 
 func (m *model) run(e *Endpoint, vals map[string]string) tea.Cmd {
@@ -110,13 +189,39 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = "request failed"
 		} else {
 			m.cursor = nextCursor(msg.res)
-			m.vp.SetContent(renderResult(msg.res, m.vp.Width))
+			m.res, m.sel = msg.res, 0
+			m.items = selectablePosts(msg.res)
+			m.selectable = len(m.items) > 0
+			if m.selectable {
+				m.rightFocus = true
+			}
+			m.vp.SetContent(m.renderRes())
 			m.status = "ok"
 			if m.cursor != "" {
 				m.status = "ok - press n for next page"
 			}
 		}
 		m.vp.GotoTop()
+		return m, nil
+	case actionMsg:
+		if msg.err != nil {
+			m.status = "failed: " + msg.err.Error()
+		} else {
+			m.status = msg.text
+			if msg.text == "bookmarked" {
+				m.bm[msg.id] = true
+				m.rerender()
+			}
+		}
+		return m, nil
+	case commentsMsg:
+		m.cLoading = false
+		if msg.err != nil {
+			m.cvp.SetContent(errSt.Width(m.cvp.Width).Render("Error: " + msg.err.Error()))
+		} else {
+			m.cvp.SetContent(renderComments(msg.res, m.cvp.Width))
+		}
+		m.cvp.GotoTop()
 		return m, nil
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
@@ -137,6 +242,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateForm(msg)
 		case stLoading:
 			return m, nil
+		case stComments:
+			return m.updateComments(msg)
 		}
 		return m.updateMenu(msg)
 	}
@@ -175,6 +282,17 @@ func (m model) updateForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, c
 }
 
+func (m model) updateComments(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "q", "c", "enter":
+		m.st = stMenu
+		return m, nil
+	}
+	var c tea.Cmd
+	m.cvp, c = m.cvp.Update(msg)
+	return m, c
+}
+
 func (m model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	k := msg.String()
 	switch k {
@@ -191,6 +309,53 @@ func (m model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			v["cursor"] = m.cursor
 			return m, m.run(m.active, v)
+		}
+	}
+	if m.rightFocus && m.selectable {
+		if p := m.selPost(); p != nil {
+			id, _ := p["id"].(string)
+			switch k {
+			case "up", "k":
+				if m.sel > 0 {
+					m.sel--
+					m.rerender()
+					m.ensureVisible()
+				}
+				return m, nil
+			case "down", "j":
+				if m.sel < len(m.items)-1 {
+					m.sel++
+					m.rerender()
+					m.ensureVisible()
+				}
+				return m, nil
+			case "b":
+				m.status = "bookmarking..."
+				return m, m.bookmark(id)
+			case "enter":
+				u, _ := p["url"].(string)
+				if u == "" {
+					u, _ = p["commentsPermalink"].(string)
+				}
+				if err := openURL(u); err != nil {
+					m.status = "open failed: " + err.Error()
+				} else {
+					m.status = "opened post url"
+				}
+				return m, nil
+			case "shift+enter", "o":
+				u, _ := p["commentsPermalink"].(string)
+				if err := openURL(u); err != nil {
+					m.status = "open failed: " + err.Error()
+				} else {
+					m.status = "opened on daily.dev"
+				}
+				return m, nil
+			case "c":
+				m.st, m.cLoading = stComments, true
+				m.cvp.SetContent("")
+				return m, m.fetchComments(id)
+			}
 		}
 	}
 	if m.rightFocus {
@@ -293,11 +458,28 @@ func (m model) View() string {
 	if m.st == stForm {
 		help = "tab/↑/↓: field • enter: run • esc: cancel"
 	}
+	if m.rightFocus && m.selectable && m.st == stMenu {
+		help = "↑/↓: select post • tab: panel • b: bookmark • enter: open url • o/shift+enter: daily.dev • c: comments • n: next • q: quit"
+	}
+	if m.st == stComments {
+		help = "↑/↓/pgup/pgdn: scroll • esc/q/enter: close"
+	}
 	st := ""
 	if m.status != "" {
 		st = "  [" + m.status + "]"
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, left, rightBox) + "\n" + metaSt.Render(help+st)
+	footer := "\n" + metaSt.Render(help+st)
+	if m.st == stComments {
+		body := titleSt.Render("Comments") + "  " + metaSt.Render(fmt.Sprint(m.selPost()["title"])) + "\n\n"
+		if m.cLoading {
+			body += m.sp.View() + " Loading...\n"
+		} else {
+			body += m.cvp.View() + "\n"
+		}
+		box := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("135")).Width(m.modalW()).Padding(0, 1).Render(body)
+		return lipgloss.Place(m.w, m.h-1, lipgloss.Center, lipgloss.Center, box) + footer
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, rightBox) + footer
 }
 
 func main() {
