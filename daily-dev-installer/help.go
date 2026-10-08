@@ -85,6 +85,7 @@ func pages() []page {
 			"  " + c("daily-dev --uninstall") + "  Remove daily-dev from this computer\n\n" +
 			h("ENVIRONMENT") + "\n" +
 			"  " + y("DAILY_DEV_TOKEN") + "     API token; skips the token prompt on startup\n" +
+			"  " + y("DAILY_DEV_CLIENT_ID") + " / " + y("DAILY_DEV_CLIENT_SECRET") + "  OAuth app credentials (OAuth login)\n" +
 			"  " + y("DAILY_DEV_INSECURE") + "  Set to 1 to skip TLS verification (corporate proxies only)\n"},
 		{"Login", h("HOW TO LOG IN") + "\n\nThe TUI authenticates with a personal API token (Bearer token).\n\n" + h("1. Create a token") + "\n" +
 			"  1) Open " + c("https://app.daily.dev") + " and sign in.\n" +
@@ -97,6 +98,12 @@ func pages() []page {
 			"  " + g("Option B") + " - set it once in PowerShell:\n" +
 			"      " + c(`[Environment]::SetEnvironmentVariable('DAILY_DEV_TOKEN','<your token>','User')`) + "\n" +
 			"    then open a new terminal and run " + c("daily-dev") + ".\n\n" +
+			h("OAUTH (alternative)") + "\n" +
+			"  On the start screen choose " + g("OAuth (sign in with daily.dev)") + ".\n" +
+			"  1) In Daily.dev go to " + y("Settings > API > OAuth apps") + " and click " + y("Create app") + ".\n" +
+			"  2) Add the redirect URI " + c("http://127.0.0.1:8765/callback") + " and copy the client ID and secret.\n" +
+			"  3) Enter them in the TUI (or set " + y("DAILY_DEV_CLIENT_ID") + " / " + y("DAILY_DEV_CLIENT_SECRET") + ").\n" +
+			"  4) Approve access in the browser that opens. Tokens are refreshed automatically.\n\n" +
 			y("Keep your token secret.") + " Revoke it in Daily.dev settings if it leaks.\n"},
 		{"Using the TUI", h("USING THE TUI") + "\n\n" +
 			"  1) Start " + c("daily-dev") + " and enter your token.\n" +

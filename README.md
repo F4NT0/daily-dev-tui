@@ -5,6 +5,10 @@
 ---
 
 <p align="center">
+  <a href="https://github.com/F4NT0/daily-dev-tui/actions/workflows/test.yml"><img src="https://github.com/F4NT0/daily-dev-tui/actions/workflows/test.yml/badge.svg" alt="Tests"></a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Go-1.26-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go">
   <img src="https://img.shields.io/badge/Bubble%20Tea-TUI-A855F7?style=for-the-badge&logo=charm&logoColor=white" alt="Bubble Tea">
   <img src="https://img.shields.io/badge/Lip%20Gloss-Styling-FF5FAF?style=for-the-badge&logo=charm&logoColor=white" alt="Lip Gloss">
@@ -13,6 +17,18 @@
   <img src="https://img.shields.io/badge/PowerShell-Installer-5391FE?style=for-the-badge&logo=powershell&logoColor=white" alt="PowerShell">
   <img src="https://img.shields.io/badge/Windows-supported-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
 </p>
+
+---
+
+## Overview
+
+A terminal UI (TUI) for the [Daily.dev](https://app.daily.dev) public API. Browse feeds, search posts, manage bookmarks, and explore developer content directly from your terminal. Written in Go with [Bubble Tea](https://github.com/charmbracelet/bubbletea).
+
+### Technologies
+
+- **Go 1.26+** – Runtime and build tool
+- **Daily.dev API token** – Authentication (requires Daily.dev Plus)
+- **Windows** – Installer and `daily-dev` command (TUI itself is cross-platform)
 
 ---
 
@@ -47,6 +63,25 @@ A terminal toolkit for the [Daily.dev](https://app.daily.dev) public API, writte
 
 Keep the token secret and revoke it if it leaks.
 
+## Signing in
+
+The start screen lets you choose between two login methods (`↑/↓` to select, `Enter` to confirm, `Esc` to go back):
+
+### 1. Bearer token (personal access token)
+
+Paste your personal access token (see above), or set `DAILY_DEV_TOKEN` to skip the login screen entirely. Best when you only automate your own account.
+
+### 2. OAuth (sign in with daily.dev)
+
+Uses the [daily.dev OAuth flow](https://docs.daily.dev/oauth-apps/) (authorization code + PKCE). OAuth apps are in beta on daily.dev.
+
+1. On daily.dev open **Settings > API > OAuth apps** and click **Create app**.
+2. Add `http://127.0.0.1:8765/callback` as a redirect URI (it must match exactly) and copy the **Client ID** and **Client secret** (the secret is shown only once).
+3. In the TUI choose **OAuth**, enter the client ID and secret (or set `DAILY_DEV_CLIENT_ID` and `DAILY_DEV_CLIENT_SECRET`).
+4. The browser opens on the daily.dev consent screen. Click **Allow** and return to the terminal. If the browser does not open, copy the URL shown in the TUI.
+
+The TUI requests `openid profile offline_access read write` for the REST API resource, keeps the tokens in memory only and refreshes the access token automatically (refresh tokens rotate). If you deny `write` on the consent screen, the TUI is read-only and bookmarking fails with `403 insufficient_scope`. Port `8765` on `127.0.0.1` must be free during sign-in; the attempt times out after 3 minutes. Nothing is stored on disk, so you sign in again on every start.
+
 ## Install
 
 Build the installer once (the TUI is **not** embedded; it is fetched or built during installation):
@@ -70,9 +105,31 @@ Then it will:
 
 Open a new terminal afterwards.
 
+## Install on Linux
+
+Requirements: `curl` or `wget` (x86_64 or arm64). No Go needed.
+
+```bash
+curl -fsSL https://github.com/F4NT0/daily-dev-tui/releases/latest/download/install.sh | bash
+```
+
+The script downloads the right binary for your architecture from the latest release, installs it to `~/.local/bin/daily-dev-tui`, creates the `daily-dev` command next to it and adds `~/.local/bin` to your `PATH` (in `~/.bashrc`, `~/.zshrc` or `~/.profile`). Open a new terminal and run `daily-dev`. `daily-dev --help`, `--version` and `--uninstall` work like on Windows.
+
+Optional environment variables for the installer: `DAILY_DEV_INSTALL_DIR` (default `~/.local/bin`), `DAILY_DEV_REPO` (default `F4NT0/daily-dev-tui`) and `DAILY_DEV_TUI_URL` (full URL of the binary to use instead of the release).
+
 ## Publishing a release
 
-Build `daily-dev-tui.exe` and `daily-dev-setup.exe` and attach both to a GitHub release. A one-line remote install is then:
+Build the release files and attach them to a GitHub release:
+
+| Asset | Used by | How to build |
+|-------|---------|--------------|
+| `daily-dev-tui.exe` | Windows installer | `cd daily-dev-tui; go build -o daily-dev-tui.exe .` |
+| `daily-dev-setup.exe` | Windows one-liner | `cd daily-dev-installer; go build -o dist\daily-dev-setup.exe .` |
+| `daily-dev-tui-linux-amd64` | Linux x86_64 | `cd daily-dev-tui; GOOS=linux GOARCH=amd64 go build -o daily-dev-tui-linux-amd64 .` |
+| `daily-dev-tui-linux-arm64` | Linux arm64 | `cd daily-dev-tui; GOOS=linux GOARCH=arm64 go build -o daily-dev-tui-linux-arm64 .` |
+| `install.sh` | Linux one-liner | the `install.sh` file at the repository root |
+
+A one-line remote install on Windows is then:
 
 ```powershell
 irm https://github.com/F4NT0/daily-dev-tui/releases/latest/download/daily-dev-setup.exe -OutFile $env:TEMP\daily-dev-setup.exe; & $env:TEMP\daily-dev-setup.exe
@@ -92,6 +149,7 @@ irm https://github.com/F4NT0/daily-dev-tui/releases/latest/download/daily-dev-se
 | Variable | Effect |
 |----------|--------|
 | `DAILY_DEV_TOKEN` | API token. Skips the login screen. |
+| `DAILY_DEV_CLIENT_ID`, `DAILY_DEV_CLIENT_SECRET` | OAuth app credentials; prefill the OAuth login form. |
 | `DAILY_DEV_INSECURE` | Set to `1` to skip TLS verification (corporate proxies only). |
 
 ### Using the TUI
@@ -100,6 +158,24 @@ irm https://github.com/F4NT0/daily-dev-tui/releases/latest/download/daily-dev-se
 2. Pick a request from the left menu (Feeds, Posts, Search, Bookmarks, Custom Feeds, Notifications, Profile, Tags, Recommend).
 3. Fill in the parameters. Required ones are marked with `*`.
 4. Read the formatted response. For paginated lists, pass the returned `cursor` to get the next page.
+
+#### Keyboard shortcuts
+
+Press `Ctrl+H` at any time in the menu or a form to open a floating help panel with two tabs: **Options panel** and **Posts panel** (`Tab` switches tabs, `Esc` closes).
+
+After a search or feed, focus moves to the results and one post is selected.
+
+| Key | Action |
+|-----|--------|
+| `↑/↓` or `j/k` | Select previous / next post |
+| `Tab` | Switch between the left panel and the results |
+| `Enter` | Open the post on daily.dev |
+| `o` | Open the original post link in the browser |
+| `b` | Add the post to your bookmarks (border turns orange) |
+| `c` | Read the post comments in a floating panel (`Esc`, `q`, `c` or `Enter` closes it) |
+| `n` | Next page |
+| `Ctrl+H` | Open the help panel (works in the menu and in forms) |
+| `q` | Quit |
 
 `401` means the token is invalid or revoked; `429` means you are rate limited.
 
@@ -116,6 +192,3 @@ go test ./...
 
 Every endpoint in `endpoints.go` is covered by a unit test against a local `httptest` server (no real token or network needed).
 
-## Running a request from GitHub Actions
-
-Each API request has its own manual workflow (`.github/workflows/api-*.yml`). Either add a repository secret named `DAILY_DEV_TOKEN`, or paste a token in the optional `daily_dev_token` input when you click **Run workflow** (the input takes precedence over the secret). Then open **Actions**, pick e.g. `API - Feeds - By tag`, click **Run workflow**, fill in the inputs and run. The response is shown in the job summary.

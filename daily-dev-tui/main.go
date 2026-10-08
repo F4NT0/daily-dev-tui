@@ -21,6 +21,10 @@ const (
 	stForm
 	stLoading
 	stComments
+	stLogin
+	stOAuthForm
+	stOAuthWait
+	stHelp
 )
 
 type resultMsg struct {
@@ -47,7 +51,16 @@ type model struct {
 	offs       [][2]int
 	cvp        viewport.Model
 	cLoading   bool
+	helpTab    int
+	helpPrev   state
 	bm         map[string]bool
+
+	oauth    *oauthState
+	sess     *oauthSession
+	loginSel int
+	oi       []textinput.Model
+	oFocus   int
+	loginErr string
 
 	st         state
 	token      string
@@ -75,6 +88,8 @@ func initialModel() model {
 	ti.Focus()
 	m := model{client: newClient(), input: ti, sp: spinner.New(spinner.WithSpinner(spinner.Dot)), vp: viewport.New(10, 10)}
 	m.bm = map[string]bool{}
+	m.st = stLogin
+	m.oi = newOAuthInputs()
 	m.cvp = viewport.New(10, 10)
 	m.vp.SetContent(metaSt.Render("Select a request on the left and press Enter."))
 	if t := strings.TrimSpace(os.Getenv("DAILY_DEV_TOKEN")); t != "" {
@@ -83,11 +98,18 @@ func initialModel() model {
 	return m
 }
 
+func (m model) bearer() string {
+	if m.oauth != nil {
+		return m.oauth.Token(m.client)
+	}
+	return m.token
+}
+
 func (m model) Init() tea.Cmd { return m.sp.Tick }
 
 func (m model) fetch(e Endpoint, vals map[string]string) tea.Cmd {
 	return func() tea.Msg {
-		r, err := doGet(m.client, m.token, e, vals)
+		r, err := doGet(m.client, m.bearer(), e, vals)
 		return resultMsg{r, err}
 	}
 }
@@ -141,14 +163,14 @@ func (m model) selPost() map[string]any {
 
 func (m model) fetchComments(id string) tea.Cmd {
 	return func() tea.Msg {
-		r, err := doGet(m.client, m.token, endpoints[6], map[string]string{"id": id, "sort": "newest", "limit": "50"})
+		r, err := doGet(m.client, m.bearer(), endpoints[6], map[string]string{"id": id, "sort": "newest", "limit": "50"})
 		return commentsMsg{r, err}
 	}
 }
 
 func (m model) bookmark(id string) tea.Cmd {
 	return func() tea.Msg {
-		err := doSend(m.client, m.token, "POST", "/bookmarks/", map[string]any{"postIds": []string{id}})
+		err := doSend(m.client, m.bearer(), "POST", "/bookmarks/", map[string]any{"postIds": []string{id}})
 		return actionMsg{"bookmarked", err, id}
 	}
 }
@@ -203,6 +225,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.vp.GotoTop()
 		return m, nil
+	case oauthDoneMsg:
+		if m.st != stOAuthWait {
+			return m, nil
+		}
+		m.sess = nil
+		if msg.err != nil {
+			m.st, m.loginErr = stOAuthForm, msg.err.Error()
+			return m, nil
+		}
+		m.oauth, m.st, m.status = msg.st, stMenu, "signed in with OAuth"
+		return m, nil
 	case actionMsg:
 		if msg.err != nil {
 			m.status = "failed: " + msg.err.Error()
@@ -227,8 +260,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
+		if msg.String() == "ctrl+h" && (m.st == stMenu || m.st == stForm) {
+			m.helpPrev, m.st, m.helpTab = m.st, stHelp, 0
+			if m.rightFocus {
+				m.helpTab = 1
+			}
+			return m, nil
+		}
 		switch m.st {
+		case stLogin:
+			return m.updateLogin(msg)
+		case stOAuthForm:
+			return m.updateOAuthForm(msg)
+		case stOAuthWait:
+			return m.updateOAuthWait(msg)
 		case stToken:
+			if msg.String() == "esc" {
+				m.st, m.loginErr = stLogin, ""
+				return m, nil
+			}
 			if msg.String() == "enter" {
 				if t := strings.TrimSpace(m.input.Value()); t != "" {
 					m.token, m.st = t, stMenu
@@ -244,6 +294,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case stComments:
 			return m.updateComments(msg)
+		case stHelp:
+			return m.updateHelp(msg)
 		}
 		return m.updateMenu(msg)
 	}
@@ -332,7 +384,7 @@ func (m model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			case "b":
 				m.status = "bookmarking..."
 				return m, m.bookmark(id)
-			case "enter":
+			case "o":
 				u, _ := p["url"].(string)
 				if u == "" {
 					u, _ = p["commentsPermalink"].(string)
@@ -343,7 +395,7 @@ func (m model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					m.status = "opened post url"
 				}
 				return m, nil
-			case "shift+enter", "o":
+			case "enter":
 				u, _ := p["commentsPermalink"].(string)
 				if err := openURL(u); err != nil {
 					m.status = "open failed: " + err.Error()
@@ -424,8 +476,12 @@ func (m model) View() string {
 	if m.w == 0 {
 		return "loading..."
 	}
-	if m.st == stToken {
+	switch m.st {
+	case stLogin, stToken, stOAuthForm, stOAuthWait:
 		return m.tokenView()
+	}
+	if m.st == stHelp {
+		return m.helpView()
 	}
 	bc := lipgloss.Color("240")
 	lb, rb := lipgloss.Color("135"), bc
@@ -454,12 +510,12 @@ func (m model) View() string {
 	}
 	rw := m.w - leftW - 4
 	rightBox := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(rb).Width(rw).Height(m.h-3).Padding(0, 1).Render(right)
-	help := "↑/↓: select • enter: run • tab: focus results • ↑/↓/pgup/pgdn: scroll • n: next page • q: quit"
+	help := "↑/↓: select option • tab: change panel • enter: run command • ctrl+h: help • q: quit"
 	if m.st == stForm {
-		help = "tab/↑/↓: field • enter: run • esc: cancel"
+		help = "tab/↑/↓: field • enter: run • esc: cancel • ctrl+h: help"
 	}
 	if m.rightFocus && m.selectable && m.st == stMenu {
-		help = "↑/↓: select post • tab: panel • b: bookmark • enter: open url • o/shift+enter: daily.dev • c: comments • n: next • q: quit"
+		help = "enter: daily.dev • o: link • b: bookmark • c: comments • tab: panel • ctrl+h: help"
 	}
 	if m.st == stComments {
 		help = "↑/↓/pgup/pgdn: scroll • esc/q/enter: close"

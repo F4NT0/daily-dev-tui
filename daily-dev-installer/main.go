@@ -40,7 +40,7 @@ func launcher(self string, args []string) {
 			runInstaller(true)
 			return
 		case "--version":
-			fmt.Println("daily-dev 2.0.0")
+			fmt.Println("daily-dev 3.0.0")
 			return
 		}
 	}
