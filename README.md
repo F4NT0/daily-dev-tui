@@ -106,3 +106,16 @@ irm https://github.com/F4NT0/daily-dev-tui/releases/latest/download/daily-dev-se
 ## Fonts
 
 For the best look, use a Nerd Font such as JetBrainsMono Nerd Font in your terminal.
+
+## Tests
+
+```powershell
+cd daily-dev-tui
+go test ./...
+```
+
+Every endpoint in `endpoints.go` is covered by a unit test against a local `httptest` server (no real token or network needed).
+
+## Running a request from GitHub Actions
+
+Each API request has its own manual workflow (`.github/workflows/api-*.yml`). Either add a repository secret named `DAILY_DEV_TOKEN`, or paste a token in the optional `daily_dev_token` input when you click **Run workflow** (the input takes precedence over the secret). Then open **Actions**, pick e.g. `API - Feeds - By tag`, click **Run workflow**, fill in the inputs and run. The response is shown in the job summary.

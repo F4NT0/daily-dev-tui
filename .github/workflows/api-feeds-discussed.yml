@@ -1,0 +1,41 @@
+name: "API - Feeds - Discussed"
+
+on:
+  workflow_dispatch:
+    inputs:
+      daily_dev_token:
+        description: "Daily.dev token (optional, overrides the DAILY_DEV_TOKEN secret)"
+        required: false
+        type: string
+      period:
+        description: "period in days (1-30)"
+        required: false
+        type: string
+      tag:
+        description: "tag"
+        required: false
+        type: string
+      source:
+        description: "source id"
+        required: false
+        type: string
+      limit:
+        description: "limit (1-50)"
+        required: false
+        type: string
+      cursor:
+        description: "cursor (pagination)"
+        required: false
+        type: string
+
+jobs:
+  request:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: GET /feeds/discussed
+        run: bash .github/scripts/request.sh
+        env:
+          ENDPOINT_PATH: "/feeds/discussed"
+          INPUTS: ${{ toJSON(inputs) }}
+          DAILY_DEV_TOKEN: ${{ inputs.daily_dev_token || secrets.DAILY_DEV_TOKEN }}
