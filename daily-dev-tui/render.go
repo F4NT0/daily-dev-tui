@@ -19,6 +19,8 @@ var (
 	errSt   = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
 )
 
+var hiddenKeys = map[string]bool{"commentsPermalink": true, "source.handle": true, "source.id": true}
+
 var titleKeys = []string{"title", "name", "message", "username", "id", "value"}
 var subKeys = []string{"subtitle", "source.name", "author.name", "author.username", "user.name", "type"}
 var summaryKeys = []string{"summary", "tldr", "description", "content", "bio"}
@@ -138,7 +140,7 @@ func renderItem(m map[string]any, w int, selected, bookmarked bool) string {
 	sort.Strings(keys)
 	var links, rest []string
 	for _, k := range keys {
-		if used[k] {
+		if used[k] || hiddenKeys[k] {
 			continue
 		}
 		v := f[k]
