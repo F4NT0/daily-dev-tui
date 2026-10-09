@@ -16,6 +16,7 @@
   <img src="https://img.shields.io/badge/Daily.dev-API-CE3DF3?style=for-the-badge&logo=dailydotdev&logoColor=white" alt="Daily.dev API">
   <img src="https://img.shields.io/badge/PowerShell-Installer-5391FE?style=for-the-badge&logo=powershell&logoColor=white" alt="PowerShell">
   <img src="https://img.shields.io/badge/Windows-supported-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
+  <img src="https://img.shields.io/badge/macOS-supported-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS">
 </p>
 
 ---
@@ -28,7 +29,7 @@ A terminal UI (TUI) for the [Daily.dev](https://app.daily.dev) public API. Brows
 
 - **Go 1.26+** – Runtime and build tool
 - **Daily.dev API token** – Authentication (requires Daily.dev Plus)
-- **Windows** – Installer and `daily-dev` command (TUI itself is cross-platform)
+- **Windows / Linux / macOS** – Installers and `daily-dev` command (TUI itself is cross-platform)
 
 ---
 
@@ -105,21 +106,21 @@ Then it will:
 
 Open a new terminal afterwards.
 
-## Install on Linux
+## Install on Linux and macOS
 
-Requirements: `curl` or `wget` (x86_64 or arm64). No Go needed.
+Requirements: `curl` or `wget` (x86_64 or arm64; Intel and Apple Silicon on macOS). No Go needed.
 
 ```bash
 curl -fsSL https://github.com/F4NT0/daily-dev-tui/releases/latest/download/install.sh | bash
 ```
 
-The script downloads the right binary for your architecture from the latest release, installs it to `~/.local/bin/daily-dev-tui`, creates the `daily-dev` command next to it and adds `~/.local/bin` to your `PATH` (in `~/.bashrc`, `~/.zshrc` or `~/.profile`). Open a new terminal and run `daily-dev`. `daily-dev --help`, `--version` and `--uninstall` work like on Windows.
+The script downloads the right binary for your architecture from the latest release, installs it to `~/.local/bin/daily-dev-tui`, creates the `daily-dev` command next to it and adds `~/.local/bin` to your `PATH` (in `~/.zshrc`, `~/.bashrc` (`~/.bash_profile` on macOS) or `~/.profile`). Open a new terminal and run `daily-dev`. `daily-dev --help`, `--version` and `--uninstall` work like on Windows.
 
 Optional environment variables for the installer: `DAILY_DEV_INSTALL_DIR` (default `~/.local/bin`), `DAILY_DEV_REPO` (default `F4NT0/daily-dev-tui`) and `DAILY_DEV_TUI_URL` (full URL of the binary to use instead of the release).
 
 ## Publishing a release
 
-Build the release files and attach them to a GitHub release:
+Pushing a tag like `v3.0.0` runs `.github/workflows/release.yml`, which builds every asset below and publishes them (plus `install.sh`) as a GitHub release. To build them manually instead:
 
 | Asset | Used by | How to build |
 |-------|---------|--------------|
@@ -127,7 +128,9 @@ Build the release files and attach them to a GitHub release:
 | `daily-dev-setup.exe` | Windows one-liner | `cd daily-dev-installer; go build -o dist\daily-dev-setup.exe .` |
 | `daily-dev-tui-linux-amd64` | Linux x86_64 | `cd daily-dev-tui; GOOS=linux GOARCH=amd64 go build -o daily-dev-tui-linux-amd64 .` |
 | `daily-dev-tui-linux-arm64` | Linux arm64 | `cd daily-dev-tui; GOOS=linux GOARCH=arm64 go build -o daily-dev-tui-linux-arm64 .` |
-| `install.sh` | Linux one-liner | the `install.sh` file at the repository root |
+| `daily-dev-tui-darwin-amd64` | macOS Intel | `cd daily-dev-tui; GOOS=darwin GOARCH=amd64 go build -o daily-dev-tui-darwin-amd64 .` |
+| `daily-dev-tui-darwin-arm64` | macOS Apple Silicon | `cd daily-dev-tui; GOOS=darwin GOARCH=arm64 go build -o daily-dev-tui-darwin-arm64 .` |
+| `install.sh` | Linux/macOS one-liner | the `install.sh` file at the repository root |
 
 A one-line remote install on Windows is then:
 
