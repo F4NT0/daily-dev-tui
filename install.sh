@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# daily-dev Linux installer.
+# daily-dev installer for Linux and macOS.
 #   curl -fsSL https://github.com/F4NT0/daily-dev-tui/releases/latest/download/install.sh | bash
 set -euo pipefail
 
@@ -12,14 +12,18 @@ die() { printf '\033[31mError:\033[0m %s\n' "$*" >&2; exit 1; }
 
 command -v curl >/dev/null 2>&1 || command -v wget >/dev/null 2>&1 || die "curl or wget is required"
 
-case "$(uname -s)" in Linux) ;; *) die "this installer is for Linux only" ;; esac
+case "$(uname -s)" in
+  Linux) os=linux ;;
+  Darwin) os=darwin ;;
+  *) die "this installer supports Linux and macOS only" ;;
+esac
 case "$(uname -m)" in
   x86_64|amd64) arch=amd64 ;;
   aarch64|arm64) arch=arm64 ;;
   *) die "unsupported architecture: $(uname -m)" ;;
 esac
 
-asset="daily-dev-tui-linux-$arch"
+asset="daily-dev-tui-$os-$arch"
 url="${DAILY_DEV_TUI_URL:-https://github.com/$REPO/releases/latest/download/$asset}"
 
 download() {
@@ -38,7 +42,12 @@ install -m 0755 "$tmp" "$INSTALL_DIR/daily-dev-tui"
 say "Installing the 'daily-dev' command"
 cat > "$INSTALL_DIR/daily-dev" <<LAUNCHER
 #!/usr/bin/env bash
-DIR="\$(cd "\$(dirname "\$(readlink -f "\${BASH_SOURCE[0]}")")" && pwd)"
+SRC="\${BASH_SOURCE[0]}"
+while [ -L "\$SRC" ]; do
+  LINK="\$(readlink "\$SRC")"
+  case "\$LINK" in /*) SRC="\$LINK" ;; *) SRC="\$(dirname "\$SRC")/\$LINK" ;; esac
+done
+DIR="\$(cd "\$(dirname "\$SRC")" && pwd)"
 case "\${1:-}" in
   --version) echo "daily-dev $VERSION"; exit 0 ;;
   --help|-h|help)
@@ -59,7 +68,11 @@ HELP
   --uninstall)
     rm -f "\$DIR/daily-dev-tui" "\$DIR/daily-dev"
     for rc in "\$HOME/.bashrc" "\$HOME/.zshrc" "\$HOME/.profile"; do
-      [ -f "\$rc" ] && sed -i '/# added by daily-dev/d' "\$rc"
+      if [ -f "\$rc" ]; then
+        grep -v '# added by daily-dev' "\$rc" > "\$rc.daily-dev.tmp" || true
+        cat "\$rc.daily-dev.tmp" > "\$rc"
+        rm -f "\$rc.daily-dev.tmp"
+      fi
     done
     echo "daily-dev removed."
     exit 0 ;;
@@ -74,7 +87,7 @@ case ":$PATH:" in
     say "Adding $INSTALL_DIR to your PATH"
     case "$(basename "${SHELL:-}")" in
       zsh) rc="$HOME/.zshrc" ;;
-      bash) rc="$HOME/.bashrc" ;;
+      bash) if [ "$os" = darwin ]; then rc="$HOME/.bash_profile"; else rc="$HOME/.bashrc"; fi ;;
       *) rc="$HOME/.profile" ;;
     esac
     printf 'export PATH="%s:$PATH" # added by daily-dev\n' "$INSTALL_DIR" >> "$rc"
