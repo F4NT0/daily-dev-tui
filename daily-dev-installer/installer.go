@@ -66,6 +66,7 @@ func runInstaller(uninstall bool) {
 			{"Create install directory", stepCreateDir},
 			{"Install daily-dev-tui.exe", stepCopyTUI},
 			{"Install the `daily-dev` command", stepCopyLauncher},
+			{"Install themes (default, catppuccin-mocha, nord, terminal, darcula)", stepInstallTheme},
 			{"Add install directory to your PATH", stepAddPath},
 		}
 	}

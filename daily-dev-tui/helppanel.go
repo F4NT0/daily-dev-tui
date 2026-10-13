@@ -17,7 +17,8 @@ var helpTabs = []helpTab{
 		{"↑/↓", "select option"},
 		{"tab", "change panel"},
 		{"enter", "run command"},
-		{"ctrl+h", "show this help"},
+		{"t", "choose theme"},
+		{"h", "show this help (ctrl+h in forms)"},
 		{"q", "quit"},
 	}},
 	{"Posts panel", [][2]string{
@@ -28,16 +29,17 @@ var helpTabs = []helpTab{
 		{"o", "open post link"},
 		{"c", "show comments"},
 		{"n", "next page"},
-		{"ctrl+h", "show this help"},
+		{"t", "choose theme"},
+		{"h", "show this help (ctrl+h in forms)"},
 		{"q", "quit"},
 	}},
 }
 
 func (m model) updateHelp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "esc", "q", "ctrl+h", "enter":
+	case "esc", "q", "h", "ctrl+h", "enter":
 		m.st = m.helpPrev
-	case "tab", "right", "l", "left", "h", "shift+tab":
+	case "tab", "right", "l", "left", "shift+tab":
 		m.helpTab = (m.helpTab + 1) % len(helpTabs)
 	}
 	return m, nil
@@ -56,7 +58,7 @@ func (m model) helpView() string {
 	for _, k := range helpTabs[m.helpTab].keys {
 		lines = append(lines, keySt.Render(lipgloss.NewStyle().Width(20).Render(k[0]))+k[1])
 	}
-	lines = append(lines, "", metaSt.Render("tab: switch tab • esc/q/ctrl+h: close"))
-	box := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("135")).Padding(1, 2).Render(strings.Join(lines, "\n"))
+	lines = append(lines, "", metaSt.Render("tab: switch tab • esc/q/h: close"))
+	box := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(col("primary")).Padding(1, 2).Render(strings.Join(lines, "\n"))
 	return lipgloss.Place(m.w, m.h, lipgloss.Center, lipgloss.Center, box)
 }

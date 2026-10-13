@@ -5,7 +5,7 @@ set -euo pipefail
 
 REPO="${DAILY_DEV_REPO:-F4NT0/daily-dev-tui}"
 INSTALL_DIR="${DAILY_DEV_INSTALL_DIR:-$HOME/.local/bin}"
-VERSION="3.0.0"
+VERSION="4.0.0"
 
 say() { printf '\033[35m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[31mError:\033[0m %s\n' "$*" >&2; exit 1; }
@@ -35,6 +35,14 @@ trap 'rm -f "$tmp"' EXIT
 download "$url" "$tmp" || die "download failed from $url (is there a release with $asset?)"
 install -m 0755 "$tmp" "$INSTALL_DIR/daily-dev-tui"
 
+THEMES="default catppuccin-mocha nord terminal darcula"
+mkdir -p "$INSTALL_DIR/themes"
+say "Installing themes ($THEMES)"
+for t in $THEMES; do
+  [ -f "$INSTALL_DIR/themes/$t.conf" ] && continue
+  download "https://github.com/$REPO/releases/latest/download/$t.conf" "$INSTALL_DIR/themes/$t.conf" || say "could not download $t.conf (skipped)"
+done
+
 say "Installing the 'daily-dev' command"
 cat > "$INSTALL_DIR/daily-dev" <<LAUNCHER
 #!/usr/bin/env bash
@@ -57,7 +65,7 @@ Environment:
 HELP
     exit 0 ;;
   --uninstall)
-    rm -f "\$DIR/daily-dev-tui" "\$DIR/daily-dev"
+    rm -rf "\$DIR/daily-dev-tui" "\$DIR/daily-dev" "\$DIR/themes"
     for rc in "\$HOME/.bashrc" "\$HOME/.zshrc" "\$HOME/.profile"; do
       [ -f "\$rc" ] && sed -i '/# added by daily-dev/d' "\$rc"
     done
