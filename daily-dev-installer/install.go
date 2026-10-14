@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 )
+
+//go:embed themes/*.conf
+var themeFS embed.FS
 
 const releaseURL = "https://github.com/F4NT0/daily-dev-tui/releases/latest/download/daily-dev-tui.exe"
 
@@ -69,6 +73,31 @@ func stepCopyTUI() error {
 		return err
 	}
 	return os.WriteFile(dst, b, 0o755)
+}
+
+func stepInstallTheme() error {
+	dir := filepath.Join(installDir(), "themes")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	ents, err := themeFS.ReadDir("themes")
+	if err != nil {
+		return err
+	}
+	for _, e := range ents {
+		dst := filepath.Join(dir, e.Name())
+		if _, err := os.Stat(dst); err == nil {
+			continue
+		}
+		b, err := themeFS.ReadFile("themes/" + e.Name())
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(dst, b, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func stepCopyLauncher() error {

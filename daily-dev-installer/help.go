@@ -86,7 +86,12 @@ func pages() []page {
 			h("ENVIRONMENT") + "\n" +
 			"  " + y("DAILY_DEV_TOKEN") + "     API token; skips the token prompt on startup\n" +
 			"  " + y("DAILY_DEV_CLIENT_ID") + " / " + y("DAILY_DEV_CLIENT_SECRET") + "  OAuth app credentials (OAuth login)\n" +
-			"  " + y("DAILY_DEV_INSECURE") + "  Set to 1 to skip TLS verification (corporate proxies only)\n"},
+			"  " + y("DAILY_DEV_TOKEN_FILE") + "  Path of the saved token file (default: token.conf next to the program)\n" +
+			"  " + y("DAILY_DEV_THEME") + "  Theme name in themes/ (or a path to a .conf file)\n" +
+			"  " + y("DAILY_DEV_INSECURE") + "  Set to 1 to skip TLS verification (corporate proxies only)\n\n" +
+			h("KEYS (RESULTS PANEL)") + "\n" +
+			"  " + c("enter") + " open on daily.dev   " + c("o") + " open original link   " + c("b") + " bookmark   " + c("c") + " comments\n" +
+			"  " + c("n") + " next page   " + c("tab") + " switch panel   " + c("h") + " help   " + c("t") + " themes   " + c("q") + " quit\n"},
 		{"Login", h("HOW TO LOG IN") + "\n\nThe TUI authenticates with a personal API token (Bearer token).\n\n" + h("1. Create a token") + "\n" +
 			"  1) Open " + c("https://app.daily.dev") + " and sign in.\n" +
 			"  2) Go to " + y("Settings") + " (your profile menu) and find the " + y("API / Developers") + " section.\n" +
@@ -94,6 +99,7 @@ func pages() []page {
 			"  4) Copy the token right away - it may not be shown again.\n" +
 			d("     (API access can require a Daily.dev Plus subscription. Menu names may vary.)") + "\n\n" +
 			h("2. Use the token") + "\n" +
+			"  The token is saved to " + c("token.conf") + " next to the program; next time choose " + g("Auto Sign In") + ". Press " + c("d") + " on that option to delete it.\n" +
 			"  " + g("Option A") + " - run " + c("daily-dev") + " and paste the token at the prompt.\n" +
 			"  " + g("Option B") + " - set it once in PowerShell:\n" +
 			"      " + c(`[Environment]::SetEnvironmentVariable('DAILY_DEV_TOKEN','<your token>','User')`) + "\n" +

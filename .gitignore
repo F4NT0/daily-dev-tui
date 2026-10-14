@@ -11,3 +11,8 @@ __pycache__/
 .env
 .vscode/
 .idea/
+**/themes/.theme
+
+# Saved Bearer token (never share or commit)
+token.conf
+**/token.conf

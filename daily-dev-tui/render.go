@@ -8,16 +8,10 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var (
-	titleSt = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("135"))
-	subSt   = lipgloss.NewStyle().Foreground(lipgloss.Color("111"))
-	metaSt  = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
-	keySt   = lipgloss.NewStyle().Foreground(lipgloss.Color("178"))
-	linkSt  = lipgloss.NewStyle().Foreground(lipgloss.Color("86")).Underline(true)
-	tagSt   = lipgloss.NewStyle().Foreground(lipgloss.Color("0")).Background(lipgloss.Color("141")).Padding(0, 1)
-	cardSt  = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("240")).Padding(0, 1)
-	errSt   = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
-)
+var selectedBorder = lipgloss.Border{
+	Top: "═", Bottom: "═", Left: "║", Right: "║",
+	TopLeft: "╭", TopRight: "╮", BottomLeft: "╰", BottomRight: "╯",
+}
 
 var hiddenKeys = map[string]bool{"commentsPermalink": true, "source.handle": true, "source.id": true}
 
@@ -170,12 +164,12 @@ func renderItem(m map[string]any, w int, selected, bookmarked bool) string {
 	}
 	st := cardSt
 	if bookmarked {
-		st = st.BorderForeground(lipgloss.Color("208"))
+		st = st.BorderForeground(col("bookmark"))
 	}
 	if selected {
-		st = st.Border(lipgloss.DoubleBorder())
+		st = st.Border(selectedBorder)
 		if !bookmarked {
-			st = st.BorderForeground(lipgloss.Color("135"))
+			st = st.BorderForeground(col("primary"))
 		}
 	}
 	return st.Width(w - 2).Render(strings.Join(b, "\n"))

@@ -8,8 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-var loginOptions = []string{"Bearer token (personal access token)", "OAuth (sign in with daily.dev)"}
-
 func newOAuthInputs() []textinput.Model {
 	id, sec := textinput.New(), textinput.New()
 	id.Prompt, sec.Prompt = "> ", "> "
@@ -24,18 +22,35 @@ func newOAuthInputs() []textinput.Model {
 func (m model) updateLogin(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "up", "k", "shift+tab":
-		m.loginSel = (m.loginSel + len(loginOptions) - 1) % len(loginOptions)
+		m.loginSel = (m.loginSel + len(loginOpts(m.saved)) - 1) % len(loginOpts(m.saved))
 	case "down", "j", "tab":
-		m.loginSel = (m.loginSel + 1) % len(loginOptions)
+		m.loginSel = (m.loginSel + 1) % len(loginOpts(m.saved))
 	case "1":
 		m.loginSel = 0
 	case "2":
 		m.loginSel = 1
+	case "3":
+		if m.saved != "" {
+			m.loginSel = 2
+		}
+	case "d":
+		if m.loginSel == 2 && m.saved != "" {
+			p := tokenFilePath()
+			if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+				m.loginErr, m.loginMsg = "could not delete "+p+": "+err.Error(), ""
+				return m, nil
+			}
+			m.saved, m.loginSel, m.loginErr, m.loginMsg = "", 0, "", "Saved token deleted ("+p+")"
+		}
 	case "enter":
-		m.loginErr = ""
+		m.loginErr, m.loginMsg = "", ""
 		if m.loginSel == 0 {
 			m.st = stToken
 			return m, m.input.Focus()
+		}
+		if m.loginSel == 2 && m.saved != "" {
+			m.token, m.st, m.status = m.saved, stMenu, "signed in with saved token"
+			return m, nil
 		}
 		m.st, m.oFocus = stOAuthForm, 0
 		m.oi[0].Focus()

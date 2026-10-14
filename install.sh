@@ -5,7 +5,7 @@ set -euo pipefail
 
 REPO="${DAILY_DEV_REPO:-F4NT0/daily-dev-tui}"
 INSTALL_DIR="${DAILY_DEV_INSTALL_DIR:-$HOME/.local/bin}"
-VERSION="3.0.0"
+VERSION="4.0.0"
 
 say() { printf '\033[35m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[31mError:\033[0m %s\n' "$*" >&2; exit 1; }
@@ -35,6 +35,14 @@ trap 'rm -f "$tmp"' EXIT
 download "$url" "$tmp" || die "download failed from $url (is there a release with $asset?)"
 install -m 0755 "$tmp" "$INSTALL_DIR/daily-dev-tui"
 
+THEMES="default catppuccin-mocha nord terminal darcula"
+mkdir -p "$INSTALL_DIR/themes"
+say "Installing themes ($THEMES)"
+for t in $THEMES; do
+  [ -f "$INSTALL_DIR/themes/$t.conf" ] && continue
+  download "https://github.com/$REPO/releases/latest/download/$t.conf" "$INSTALL_DIR/themes/$t.conf" || say "could not download $t.conf (skipped)"
+done
+
 say "Installing the 'daily-dev' command"
 cat > "$INSTALL_DIR/daily-dev" <<LAUNCHER
 #!/usr/bin/env bash
@@ -52,12 +60,18 @@ daily-dev - terminal UI for the Daily.dev public API
 
 Environment:
   DAILY_DEV_TOKEN      API token; skips the token prompt on startup
+  DAILY_DEV_TOKEN_FILE Path of the saved token file (default: token.conf next to the program)
   DAILY_DEV_CLIENT_ID / DAILY_DEV_CLIENT_SECRET  OAuth app credentials (OAuth login)
+  DAILY_DEV_THEME      Theme name in themes/ (or a path to a .conf file)
   DAILY_DEV_INSECURE   Set to 1 to skip TLS verification (corporate proxies only)
+
+Keys (results panel): enter open on daily.dev | o open original link | b bookmark
+  c comments | n next page | tab switch panel | h help | t themes | q quit
+Login: choose Bearer token, OAuth or Auto Sign In (saved token); d deletes the saved token.
 HELP
     exit 0 ;;
   --uninstall)
-    rm -f "\$DIR/daily-dev-tui" "\$DIR/daily-dev"
+    rm -rf "\$DIR/daily-dev-tui" "\$DIR/daily-dev" "\$DIR/themes" "\$DIR/token.conf"
     for rc in "\$HOME/.bashrc" "\$HOME/.zshrc" "\$HOME/.profile"; do
       [ -f "\$rc" ] && sed -i '/# added by daily-dev/d' "\$rc"
     done

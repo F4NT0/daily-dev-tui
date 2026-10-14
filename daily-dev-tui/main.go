@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -25,6 +26,8 @@ const (
 	stOAuthForm
 	stOAuthWait
 	stHelp
+	stLink
+	stThemes
 )
 
 type resultMsg struct {
@@ -53,6 +56,16 @@ type model struct {
 	cLoading   bool
 	helpTab    int
 	helpPrev   state
+	linkURL    string
+	user       string
+	saved      string
+	loginMsg   string
+	userReq    bool
+	statusAt   time.Time
+	themeSel   int
+	themeOrig  string
+	linkErr    string
+	linkPost   map[string]any
 	bm         map[string]bool
 
 	oauth    *oauthState
@@ -88,6 +101,7 @@ func initialModel() model {
 	ti.Focus()
 	m := model{client: newClient(), input: ti, sp: spinner.New(spinner.WithSpinner(spinner.Dot)), vp: viewport.New(10, 10)}
 	m.bm = map[string]bool{}
+	m.saved = loadSavedToken()
 	m.st = stLogin
 	m.oi = newOAuthInputs()
 	m.cvp = viewport.New(10, 10)
@@ -105,7 +119,7 @@ func (m model) bearer() string {
 	return m.token
 }
 
-func (m model) Init() tea.Cmd { return m.sp.Tick }
+func (m model) Init() tea.Cmd { return tea.Batch(m.sp.Tick, tickCmd()) }
 
 func (m model) fetch(e Endpoint, vals map[string]string) tea.Cmd {
 	return func() tea.Msg {
@@ -116,7 +130,7 @@ func (m model) fetch(e Endpoint, vals map[string]string) tea.Cmd {
 
 func (m *model) layout() {
 	m.vp.Width = m.w - leftW - 6
-	m.vp.Height = m.h - 3
+	m.vp.Height = m.h - 4
 	m.cvp.Width = m.modalW() - 4
 	m.cvp.Height = m.h - 10
 }
@@ -194,7 +208,7 @@ func (m *model) startForm(e *Endpoint) tea.Cmd {
 	return textinput.Blink
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m model) step(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.w, m.h = msg.Width, msg.Height
@@ -282,6 +296,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.String() == "enter" {
 				if t := strings.TrimSpace(m.input.Value()); t != "" {
 					m.token, m.st = t, stMenu
+					if err := saveToken(t); err != nil {
+						m.status = "failed to save token: " + err.Error()
+					} else {
+						m.saved, m.status = t, "token saved locally (token.conf)"
+					}
 				}
 				return m, nil
 			}
@@ -296,6 +315,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateComments(msg)
 		case stHelp:
 			return m.updateHelp(msg)
+		case stThemes:
+			return m.updateThemes(msg)
+		case stLink:
+			m.st = stMenu
+			return m, nil
 		}
 		return m.updateMenu(msg)
 	}
@@ -350,6 +374,14 @@ func (m model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch k {
 	case "q":
 		return m, tea.Quit
+	case "t":
+		return m.openThemes(), nil
+	case "h":
+		m.helpPrev, m.st, m.helpTab = m.st, stHelp, 0
+		if m.rightFocus {
+			m.helpTab = 1
+		}
+		return m, nil
 	case "tab":
 		m.rightFocus = !m.rightFocus
 		return m, nil
@@ -390,7 +422,7 @@ func (m model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					u, _ = p["commentsPermalink"].(string)
 				}
 				if err := openURL(u); err != nil {
-					m.status = "open failed: " + err.Error()
+					m = m.openFailed(err, p, u)
 				} else {
 					m.status = "opened post url"
 				}
@@ -398,7 +430,7 @@ func (m model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			case "enter":
 				u, _ := p["commentsPermalink"].(string)
 				if err := openURL(u); err != nil {
-					m.status = "open failed: " + err.Error()
+					m = m.openFailed(err, p, u)
 				} else {
 					m.status = "opened on daily.dev"
 				}
@@ -448,7 +480,7 @@ func (m model) leftView() string {
 		}
 		line := "  " + e.Name
 		if i == m.cur {
-			line = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("135")).Render("▸ " + e.Name)
+			line = lipgloss.NewStyle().Bold(true).Foreground(col("primary")).Render("▸ " + e.Name)
 		}
 		b.WriteString(line + "\n")
 	}
@@ -483,12 +515,18 @@ func (m model) View() string {
 	if m.st == stHelp {
 		return m.helpView()
 	}
-	bc := lipgloss.Color("240")
-	lb, rb := lipgloss.Color("135"), bc
-	if m.rightFocus {
-		lb, rb = bc, lipgloss.Color("135")
+	if m.st == stThemes {
+		return m.themesView()
 	}
-	left := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lb).Width(leftW).Height(m.h-3).Padding(0, 1).Render(titleSt.Render("Daily.dev TUI") + m.leftView())
+	if m.st == stLink {
+		return m.linkView()
+	}
+	bc := col("border")
+	lb, rb := col("primary"), bc
+	if m.rightFocus {
+		lb, rb = bc, col("primary")
+	}
+	left := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lb).Width(leftW).Height(m.h-4).Padding(0, 1).Render(titleSt.Render("Daily.dev TUI") + m.leftView())
 
 	var right string
 	switch m.st {
@@ -509,22 +547,19 @@ func (m model) View() string {
 		right = m.vp.View()
 	}
 	rw := m.w - leftW - 4
-	rightBox := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(rb).Width(rw).Height(m.h-3).Padding(0, 1).Render(right)
-	help := "↑/↓: select option • tab: change panel • enter: run command • ctrl+h: help • q: quit"
+	rightBox := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(rb).Width(rw).Height(m.h-4).Padding(0, 1).Render(right)
+	help := "↑/↓: select option • tab: change panel • enter: run command • t: theme • h: help • q: quit"
 	if m.st == stForm {
 		help = "tab/↑/↓: field • enter: run • esc: cancel • ctrl+h: help"
 	}
 	if m.rightFocus && m.selectable && m.st == stMenu {
-		help = "enter: daily.dev • o: link • b: bookmark • c: comments • tab: panel • ctrl+h: help"
+		help = "enter: daily.dev • o: link • b: bookmark • c: comments • tab: panel • t: theme • h: help"
 	}
 	if m.st == stComments {
 		help = "↑/↓/pgup/pgdn: scroll • esc/q/enter: close"
 	}
-	st := ""
-	if m.status != "" {
-		st = "  [" + m.status + "]"
-	}
-	footer := "\n" + metaSt.Render(help+st)
+	footer := "\n" + metaSt.Render(help)
+	header := m.headerView() + "\n"
 	if m.st == stComments {
 		body := titleSt.Render("Comments") + "  " + metaSt.Render(fmt.Sprint(m.selPost()["title"])) + "\n\n"
 		if m.cLoading {
@@ -532,10 +567,10 @@ func (m model) View() string {
 		} else {
 			body += m.cvp.View() + "\n"
 		}
-		box := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("135")).Width(m.modalW()).Padding(0, 1).Render(body)
-		return lipgloss.Place(m.w, m.h-1, lipgloss.Center, lipgloss.Center, box) + footer
+		box := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(col("primary")).Width(m.modalW()).Padding(0, 1).Render(body)
+		return header + lipgloss.Place(m.w, m.h-2, lipgloss.Center, lipgloss.Center, box) + footer
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, left, rightBox) + footer
+	return header + lipgloss.JoinHorizontal(lipgloss.Top, left, rightBox) + footer
 }
 
 func main() {
