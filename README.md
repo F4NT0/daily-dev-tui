@@ -4,7 +4,6 @@
 
 <p align="center">
   <a href="https://github.com/F4NT0/daily-dev-tui/actions/workflows/test.yml"><img src="https://github.com/F4NT0/daily-dev-tui/actions/workflows/test.yml/badge.svg" alt="Tests"></a>
-  <a>Supported on Windows 11, Linux and MacOS</a>
 </p>
 
 <p align="center">
@@ -221,26 +220,36 @@ All TUI colors are variables defined in `.conf` files inside a `themes/` directo
   <img src="docs/screenshots/theme-picker.png" alt="Theme picker" width="720">
 </p>
 
-<!-- IMAGE: side by side screenshots of the themes. Save as docs/screenshots/themes.png -->
-<p align="center">
-  <img src="docs/screenshots/theme-default.png" alt="Default theme" width="720">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/theme-mocha.png" alt="Catppuccin Mocha theme" width="720">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/theme-darcula.png" alt="Darcula theme" width="720">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/theme-nord.png" alt="Nord theme" width="720">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/theme-terminal.png" alt="Terminal theme" width="720">
-</p>
+<!-- IMAGES: one screenshot per theme. Save them as docs/screenshots/theme-<name>.png -->
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/theme-default.png" alt="Default theme" width="420"><br>
+      <sub><b>Default</b></sub>
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/theme-mocha.png" alt="Catppuccin Mocha theme" width="420"><br>
+      <sub><b>Catppuccin Mocha</b></sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/theme-darcula.png" alt="Darcula theme" width="420"><br>
+      <sub><b>Darcula</b></sub>
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/theme-nord.png" alt="Nord theme" width="420"><br>
+      <sub><b>Nord</b></sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/theme-terminal.png" alt="Terminal theme" width="420"><br>
+      <sub><b>Terminal</b></sub>
+    </td>
+    <td></td>
+  </tr>
+</table>
 
 - Press `t` in the menu to open a floating list of the themes found in `themes/`. `↑/↓` previews each theme live, `Enter` applies it and `Esc` cancels. The choice is remembered (stored in `themes/.theme`).
 - Or start with `DAILY_DEV_THEME=nord` (a theme name, or a full path to a `.conf` file). The variable takes priority over the remembered choice.
