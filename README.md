@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/login-screen.png" alt="daily-dev login screen" width="720">
+  <img src="docs/logo.png" alt="daily-dev login screen" width="720">
 </p>
 
 <p align="center">
