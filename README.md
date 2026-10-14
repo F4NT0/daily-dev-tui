@@ -4,6 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/F4NT0/daily-dev-tui/actions/workflows/test.yml"><img src="https://github.com/F4NT0/daily-dev-tui/actions/workflows/test.yml/badge.svg" alt="Tests"></a>
+  <a>Supported on Windows 11, Linux and MacOS</a>
 </p>
 
 <p align="center">
@@ -11,9 +12,6 @@
   <img src="https://img.shields.io/badge/Bubble%20Tea-TUI-A855F7?style=for-the-badge&logo=charm&logoColor=white" alt="Bubble Tea">
   <img src="https://img.shields.io/badge/Lip%20Gloss-Styling-FF5FAF?style=for-the-badge&logo=charm&logoColor=white" alt="Lip Gloss">
   <img src="https://img.shields.io/badge/Daily.dev-API-CE3DF3?style=for-the-badge&logo=dailydotdev&logoColor=white" alt="Daily.dev API">
-  <img src="https://img.shields.io/badge/Windows-supported-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
-  <img src="https://img.shields.io/badge/Linux-supported-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Linux">
-  <img src="https://img.shields.io/badge/macOS-supported-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS">
 </p>
 
 ---
@@ -110,7 +108,7 @@ After a search or feed, focus moves to the results and one post is selected.
 | Comments panel | `↑/↓`, `PgUp/PgDn` scroll, `Esc`/`q`/`c`/`Enter` close |
 | Help panel | `Tab` or `←/→` switch tab, `Esc`/`q`/`h` close |
 | Theme panel | `↑/↓` preview, `Enter` apply, `Esc` cancel |
-| Login screen | `↑/↓` select method, `Enter` confirm, `Esc` back, `Ctrl+C` quit |
+| Login screen | `↑/↓` or `1`/`2`/`3` select method, `Enter` confirm, `d` delete the saved token (on the Auto Sign In option), `Esc` back, `Ctrl+C` quit |
 
 ---
 
@@ -118,7 +116,7 @@ After a search or feed, focus moves to the results and one post is selected.
 
 ### 1. Choose how to sign in
 
-The start screen lets you choose between two login methods.
+The start screen lets you choose between the login methods (a third option, **Auto Sign In**, appears once a token is saved locally).
 
 <!-- IMAGE: the login method selector. Save as docs/screenshots/login-selector.png -->
 <p align="center">
@@ -133,6 +131,18 @@ The start screen lets you choose between two login methods.
 4. Paste it in the TUI, or set `DAILY_DEV_TOKEN` to skip the login screen entirely.
 
 Keep the token secret and revoke it if it leaks.
+
+#### Auto Sign In (token saved locally)
+
+After you confirm a Bearer token, the TUI saves it in a file called `token.conf` in the same directory as the program (the install directory that is on your `PATH`: `%LOCALAPPDATA%\Programs\daily-dev` on Windows, `~/.local/bin` on Linux and macOS; when running from a clone, the `daily-dev-tui/` folder). The file looks like this:
+
+```conf
+token = <your token>
+```
+
+The next time you start the program, if `token.conf` exists, the login screen shows a third option, **Auto Sign In (Token already saved locally)**. Choose it (or press `3`) to sign in with the saved token without typing it again. To replace the token, sign in again with **Bearer token** (it overwrites the file); to forget it, highlight the Auto Sign In option and press `d` (this deletes `token.conf`), or delete the file yourself (`daily-dev --uninstall` on Linux and macOS also removes it).
+
+> **Security:** `token.conf` holds your personal access token in plain text (it is created with owner-only permissions on Linux and macOS). It is listed in `.gitignore` and must **never** be shared, committed, uploaded or attached to an issue or a release. If it ever leaks, revoke the token at <https://app.daily.dev/settings/api>.
 
 #### OAuth (sign in with daily.dev)
 
@@ -159,7 +169,18 @@ Choose a request from the left menu (Feeds, Posts, Search, Bookmarks, Custom Fee
   <img src="docs/screenshots/form.png" alt="Parameter form" width="720">
 </p>
 
-### 3. Read and act on the results
+### 3. Top bar: account, request quota and notifications
+
+Once you are signed in (token or OAuth), a bar above the panels shows, centered: the **user name** you are authenticated as, **Requests left** in the current window, the **Limit** per minute and **Resets in** (a countdown to the quota reset). The values come from the `x-ratelimit-*` headers of the API and update after every request. `Requests left` turns orange when 25% or less remains and red at zero.
+
+Notifications appear at the top right for a few seconds: **green** for successful actions (bookmarked, opened, request ok) and **red** for failures (request failed, could not open a link, missing required field).
+
+<!-- IMAGE: the top bar with user, quota and a notification. Save as docs/screenshots/top-bar.png -->
+<p align="center">
+  <img src="docs/screenshots/top-bar.png" alt="Top bar" width="720">
+</p>
+
+### 4. Read and act on the results
 
 Results are shown as cards. Move between posts with `↑/↓`, then:
 
@@ -202,7 +223,23 @@ All TUI colors are variables defined in `.conf` files inside a `themes/` directo
 
 <!-- IMAGE: side by side screenshots of the themes. Save as docs/screenshots/themes.png -->
 <p align="center">
-  <img src="docs/screenshots/themes.png" alt="Themes" width="720">
+  <img src="docs/screenshots/theme-default.png" alt="Default theme" width="720">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/theme-mocha.png" alt="Catppuccin Mocha theme" width="720">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/theme-darcula.png" alt="Darcula theme" width="720">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/theme-nord.png" alt="Nord theme" width="720">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/theme-terminal.png" alt="Terminal theme" width="720">
 </p>
 
 - Press `t` in the menu to open a floating list of the themes found in `themes/`. `↑/↓` previews each theme live, `Enter` applies it and `Esc` cancels. The choice is remembered (stored in `themes/.theme`).
@@ -224,6 +261,7 @@ error     = 196   # errors
 bookmark  = 208   # bookmarked post border
 accent    = 214   # login prompts and version
 info      = 75    # login tagline
+ok        = 78    # success notifications, healthy request quota
 ```
 
 Lines starting with `#` are comments; text after the value (separated by a space) is ignored, so inline comments work too.
@@ -244,6 +282,7 @@ Lines starting with `#` are comments; text after the value (separated by a space
 | `DAILY_DEV_TOKEN` | API token. Skips the login screen. |
 | `DAILY_DEV_CLIENT_ID`, `DAILY_DEV_CLIENT_SECRET` | OAuth app credentials; prefill the OAuth login form. |
 | `DAILY_DEV_THEME` | Theme name (file `themes/<name>.conf`) or a full path to a `.conf` file. Default: `default`. |
+| `DAILY_DEV_TOKEN_FILE` | Full path of the file used for the saved token (default: `token.conf` next to the program). |
 | `DAILY_DEV_INSECURE` | Set to `1` to skip TLS verification (corporate proxies only). |
 | `BROWSER` | Linux: browser command used to open links when `xdg-open` is not available. |
 
@@ -284,59 +323,13 @@ Requirements: macOS with `curl` (Intel or Apple Silicon). No Go needed. The scri
 
 ---
 
-## Development
-
-### Repository layout
-
-| Path | What it is |
-|------|------------|
-| `daily-dev-tui/` | The TUI client: login, menu, parameter forms and a formatted response viewer. |
-| `daily-dev-tui/main.go` | Bubble Tea model: states, key handling and layout. |
-| `daily-dev-tui/api.go` | HTTP client for `https://api.daily.dev/public/v1`. |
-| `daily-dev-tui/endpoints.go` | The list of supported API requests and their parameters. |
-| `daily-dev-tui/render.go` | Rendering of API responses (posts, tags, sources, ...). |
-| `daily-dev-tui/oauth.go`, `login.go` | OAuth flow and the login screens. |
-| `daily-dev-tui/theme.go`, `themes/` | Theme loading and the built-in `.conf` themes. |
-| `daily-dev-installer/` | Windows installer and the `daily-dev` launcher (with the colored `--help`). |
-| `install.sh`, `install-macos.sh` | Linux and macOS installers. |
-| `daily_dev_search.py`, `requirements.txt` | Standalone Python search script. |
-
-### Tests
-
-```bash
-cd daily-dev-tui
-go test ./...
-```
-
-Every endpoint in `endpoints.go` is covered by a unit test against a local `httptest` server (no real token or network needed). The same tests run on every push and pull request through GitHub Actions.
-
-### Publishing a release
-
-Build the release files and attach them all to a GitHub release:
-
-| Asset | Used by | How to build |
-|-------|---------|--------------|
-| `daily-dev-setup.exe` | Windows one-liner | `cd daily-dev-installer; go build -o dist\daily-dev-setup.exe .` |
-| `daily-dev-tui.exe` | Windows installer | `cd daily-dev-tui; go build -o daily-dev-tui.exe .` |
-| `install.sh` | Linux one-liner | the file at the repository root |
-| `daily-dev-tui-linux-amd64` | Linux x86_64 | `GOOS=linux GOARCH=amd64 go build -o daily-dev-tui-linux-amd64 .` |
-| `daily-dev-tui-linux-arm64` | Linux arm64 | `GOOS=linux GOARCH=arm64 go build -o daily-dev-tui-linux-arm64 .` |
-| `install-macos.sh` | macOS one-liner | the file at the repository root |
-| `daily-dev-tui-darwin-amd64` | macOS Intel | `GOOS=darwin GOARCH=amd64 go build -o daily-dev-tui-darwin-amd64 .` |
-| `daily-dev-tui-darwin-arm64` | macOS Apple Silicon | `GOOS=darwin GOARCH=arm64 go build -o daily-dev-tui-darwin-arm64 .` |
-| `default.conf`, `catppuccin-mocha.conf`, `nord.conf`, `terminal.conf`, `darcula.conf` | Themes (downloaded by the Linux and macOS installers) | the files in `daily-dev-tui/themes/` |
-
-The `go build` commands for the TUI run inside `daily-dev-tui/`.
-
----
-
 ## Support the project
 
 If this tool is useful to you, you can support its development:
 
 <!-- Replace the URL below with your Buy Me a Coffee page -->
 <p align="center">
-  <a href="https://www.buymeacoffee.com/YOUR_USERNAME">
+  <a href="buymeacoffee.com/f4nt0">
     <img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-F4NT0-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee - F4NT0">
   </a>
 </p>

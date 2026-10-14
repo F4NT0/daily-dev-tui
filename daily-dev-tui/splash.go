@@ -59,7 +59,7 @@ func (m model) tokenView() string {
 		hint = "esc: cancel   ctrl+c: quit"
 	default:
 		panel = []string{acc.Render("Choose how to sign in:"), ""}
-		for i, o := range loginOptions {
+		for i, o := range loginOpts(m.saved) {
 			if i == m.loginSel {
 				panel = append(panel, titleSt.Render("▸ "+o))
 			} else {
@@ -67,6 +67,12 @@ func (m model) tokenView() string {
 			}
 		}
 		hint = "↑/↓: select   enter: confirm   ctrl+c: quit"
+		if m.saved != "" && m.loginSel == 2 {
+			hint = "↑/↓: select   enter: confirm   d: delete saved token   ctrl+c: quit"
+		}
+	}
+	if m.loginMsg != "" {
+		panel = append(panel, "", lipgloss.NewStyle().Foreground(col("ok")).Bold(true).Width(max(20, m.w-8)).Render(m.loginMsg))
 	}
 	if m.loginErr != "" {
 		panel = append(panel, "", errSt.Width(max(20, m.w-8)).Render(m.loginErr))
@@ -76,7 +82,7 @@ func (m model) tokenView() string {
 		lipgloss.NewStyle().Width(lipgloss.Width(art)).Align(lipgloss.Center).Foreground(col("accent")).Bold(true).Render("v" + version), "",
 		lipgloss.NewStyle().Foreground(col("info")).Bold(true).Render("Daily.dev public API client"),
 		metaSt.Render("Browse feeds, posts, bookmarks and more through the Daily.dev REST API"),
-		metaSt.Render("(sign in with a personal Bearer token or with OAuth)"), "",
+		metaSt.Render("(sign in with a personal Bearer token, OAuth or a locally saved token)"), "",
 		line, "",
 	}, panel...), "", metaSt.Render(hint)), "\n")
 	return lipgloss.Place(m.w, m.h, lipgloss.Center, lipgloss.Center, body)

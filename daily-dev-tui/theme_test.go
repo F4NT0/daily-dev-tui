@@ -7,9 +7,9 @@ import (
 )
 
 func TestDefaultThemeLoads(t *testing.T) {
-	t.Setenv("DAILY_DEV_THEME", filepath.Join(t.TempDir(), "missing.conf"))
+	t.Setenv("DAILY_DEV_THEME", "default")
 	loadTheme()
-	if colors["primary"] != "135" || len(colors) != 12 {
+	if colors["primary"] != "135" || len(colors) != 13 {
 		t.Fatalf("unexpected default colors: %v", colors)
 	}
 }

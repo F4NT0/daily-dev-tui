@@ -66,12 +66,18 @@ daily-dev - terminal UI for the Daily.dev public API
 
 Environment:
   DAILY_DEV_TOKEN      API token; skips the token prompt on startup
+  DAILY_DEV_TOKEN_FILE Path of the saved token file (default: token.conf next to the program)
   DAILY_DEV_CLIENT_ID / DAILY_DEV_CLIENT_SECRET  OAuth app credentials (OAuth login)
+  DAILY_DEV_THEME      Theme name in themes/ (or a path to a .conf file)
   DAILY_DEV_INSECURE   Set to 1 to skip TLS verification (corporate proxies only)
+
+Keys (results panel): enter open on daily.dev | o open original link | b bookmark
+  c comments | n next page | tab switch panel | h help | t themes | q quit
+Login: choose Bearer token, OAuth or Auto Sign In (saved token); d deletes the saved token.
 HELP
     exit 0 ;;
   --uninstall)
-    rm -rf "\$DIR/daily-dev-tui" "\$DIR/daily-dev" "\$DIR/themes"
+    rm -rf "\$DIR/daily-dev-tui" "\$DIR/daily-dev" "\$DIR/themes" "\$DIR/token.conf"
     for rc in "\$HOME/.zshrc" "\$HOME/.bash_profile" "\$HOME/.profile"; do
       [ -f "\$rc" ] && sed -i '' '/# added by daily-dev/d' "\$rc"
     done

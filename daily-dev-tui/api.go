@@ -48,6 +48,7 @@ func doGet(c *http.Client, token string, e Endpoint, vals map[string]string) (an
 		return nil, err
 	}
 	defer resp.Body.Close()
+	recordRate(resp.Header)
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
@@ -72,6 +73,7 @@ func doSend(c *http.Client, token, method, path string, body any) error {
 		return err
 	}
 	defer resp.Body.Close()
+	recordRate(resp.Header)
 	if resp.StatusCode >= 300 {
 		rb, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(rb)))

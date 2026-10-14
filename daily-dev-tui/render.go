@@ -8,6 +8,11 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var selectedBorder = lipgloss.Border{
+	Top: "═", Bottom: "═", Left: "║", Right: "║",
+	TopLeft: "╭", TopRight: "╮", BottomLeft: "╰", BottomRight: "╯",
+}
+
 var hiddenKeys = map[string]bool{"commentsPermalink": true, "source.handle": true, "source.id": true}
 
 var titleKeys = []string{"title", "name", "message", "username", "id", "value"}
@@ -162,7 +167,7 @@ func renderItem(m map[string]any, w int, selected, bookmarked bool) string {
 		st = st.BorderForeground(col("bookmark"))
 	}
 	if selected {
-		st = st.Border(lipgloss.DoubleBorder())
+		st = st.Border(selectedBorder)
 		if !bookmarked {
 			st = st.BorderForeground(col("primary"))
 		}
